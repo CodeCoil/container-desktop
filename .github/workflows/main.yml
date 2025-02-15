@@ -61,7 +61,7 @@ jobs:
           # registry/org
           echo "REGISTRY_BASE_IMAGE_PATH=$github_cr_base_name" >> ${GITHUB_ENV}
           # registry/org/repo
-          echo "DEFAULT_FULL_IMAGE_NAME=$REGISTRY/$github_repo_lowercase" >> ${GITHUB_ENV}
+          echo "DEFAULT_FULL_IMAGE_NAME=$REGISTRY/$github_repo_lc" >> ${GITHUB_ENV}
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
