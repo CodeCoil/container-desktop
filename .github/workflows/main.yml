@@ -109,8 +109,8 @@ jobs:
           load: true
           push: false
           tags: container-desktop-tools:build
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/container-desktop-tools:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/container-desktop-tools:buildcache,mode=max,compression=zstd,compression-level=9
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository }}:tools-buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository }}:tools-buildcache,mode=max,compression=zstd,compression-level=9
       
       # - name: Build tools image
       #   run: docker build -t container-desktop-tools:build --build-arg "DOCKER_VERSION=$DOCKER_VERSION" tools/container-desktop-tools/
