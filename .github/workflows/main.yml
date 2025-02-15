@@ -24,16 +24,45 @@ env:
   DOCKER_COMPOSE_VERSION: "v2.27.1"
   DOCKER_BUILDX_VERSION: "v0.15.0"
   GO_VERSION: "1.22"
-
+  GO_DNSMASQ: "1.0.7"
+  REGISTRY: ghcr.io
+  # Need to be resolved dynamically as there is no lowercase function
+  # for templated expressions!
+  # See also: https://github.com/orgs/community/discussions/25768
+  # org
+  GITHUB_REPOSITORY_OWNER_LC:   
+  # org/repo
+  GITHUB_REPOSITORY_LC:   
+  # registry/org
+  REGISTRY_BASE_IMAGE_PATH:
+  # registry/org/repo
+  DEFAULT_FULL_IMAGE_NAME:
   # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
   build-linux:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-
+    permissions:
+      # required to push image cache layers to the ghcr
+      packages: write
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - name: lowercase github.repository
+        run: |
+          github_repo_owner_lc="${GITHUB_REPOSITORY_OWNER@L}"
+          github_repo_lc="${GITHUB_REPOSITORY@L}"
+          github_cr_base_name="$REGISTRY/$github_repo_owner_lc"
+
+          # org
+          echo "GITHUB_REPOSITORY_OWNER_LC=$github_repo_owner_lc" >> ${GITHUB_ENV}
+          # org/repo
+          echo "GITHUB_REPOSITORY_LC=$github_repo_lc" >> ${GITHUB_ENV}
+          # registry/org
+          echo "REGISTRY_BASE_IMAGE_PATH=$github_cr_base_name" >> ${GITHUB_ENV}
+          # registry/org/repo
+          echo "DEFAULT_FULL_IMAGE_NAME=$REGISTRY/$github_repo_lc" >> ${GITHUB_ENV}
+
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
         with:
@@ -47,37 +76,81 @@ jobs:
           rm -rf dist/*
           mkdir -p dist
       
-      - name: Build tools image
-        run: docker build -t container-desktop-tools:build --build-arg "DOCKER_VERSION=$DOCKER_VERSION" tools/container-desktop-tools/
+      ################################################# DOWNLOADS ###################################################
 
-      - name: Download and extract docker cli
+      - name: Download docker cli
+        uses: ethanjli/cached-download-action@v0.1.2
+        with:
+          url: https://download.docker.com/win/static/stable/x86_64/docker-${{ env.DOCKER_VERSION }}.zip
+          destination: docker-${{ env.DOCKER_VERSION }}.zip
+
+      - name: Download docker compose (windows)
+        uses: ethanjli/cached-download-action@v0.1.2
+        with:
+          url: https://github.com/docker/compose/releases/download/${{ env.DOCKER_COMPOSE_VERSION }}/docker-compose-Windows-x86_64.exe
+          destination:  dist/docker/docker-compose.exe
+
+      - name: Download docker compose (linux)
+        uses: ethanjli/cached-download-action@v0.1.2
+        with:
+          url: https://github.com/docker/compose/releases/download/${{ env.DOCKER_COMPOSE_VERSION }}/docker-compose-linux-x86_64
+          destination: dist/docker/docker-compose
+
+      - name: Download buildx (windows)
+        uses: ethanjli/cached-download-action@v0.1.2
+        with:
+          url: https://github.com/docker/buildx/releases/download/${{ env.DOCKER_BUILDX_VERSION }}/buildx-${{ env.DOCKER_BUILDX_VERSION }}.windows-amd64.exe
+          destination: dist/docker/cli-plugins/docker-buildx.exe
+
+      - name: Download dns-forwarder (go-dnsmasq)
+        uses: ethanjli/cached-download-action@v0.1.2
+        with:
+          url: https://github.com/janeczku/go-dnsmasq/releases/download/${{ env.GO_DNSMASQ }}/go-dnsmasq-min_linux-amd64
+          destination: dist/bin/dns-forwarder
+
+      # This does not have a versioned url
+      - name: Download WSL Kernel MSI
         run: |
-          curl -LO https://download.docker.com/win/static/stable/x86_64/docker-$DOCKER_VERSION.zip 
+          curl -L -o dist/wsl_update_x64.msi https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi
+
+      ################################################# DOWNLOADS ###################################################
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry ${{ env.REGISTRY }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}        
+
+      - name: Build tools image
+        uses: docker/build-push-action@v6
+        env:
+          IMAGE_NAME: container-desktop-tools
+        with:
+          context: 'tools/container-desktop-tools/'
+          build-args: |
+            "DOCKER_VERSION=${{ env.DOCKER_VERSION }}"
+          load: true
+          push: false
+          tags: container-desktop-tools:build
+          cache-from: type=registry,ref=${{ env.DEFAULT_FULL_IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.DEFAULT_FULL_IMAGE_NAME }}:buildcache,mode=max,compression=zstd,compression-level=9
+      
+      # - name: Build tools image
+      #   run: docker build -t container-desktop-tools:build --build-arg "DOCKER_VERSION=$DOCKER_VERSION" tools/container-desktop-tools/
+
+      - name: Extract docker cli
+        run: |
           unzip -o docker-$DOCKER_VERSION.zip -x docker/dockerd.exe -d dist
       
       - name: Extract Linux docker cli and plugins 
         run: |
           docker run --rm -v $PWD:/src container-desktop-tools:build sh -c "mkdir /src/dist/docker/linux && cp -R /usr/libexec/docker/cli-plugins /src/dist/docker/linux"
-
-      - name: Download docker compose
-        run: |
-          curl -L -o dist/docker/docker-compose.exe https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-Windows-x86_64.exe
-          curl -L -o dist/docker/docker-compose https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-linux-x86_64
-
-      - name: Download buildx
-        run: |
-          mkdir -p dist/docker/cli-plugins
-          curl -L -o dist/docker/cli-plugins/docker-buildx.exe https://github.com/docker/buildx/releases/download/$DOCKER_BUILDX_VERSION/buildx-$DOCKER_BUILDX_VERSION.windows-amd64.exe
-
-      - name: Download WSL Kernel MSI
-        run: |
-          curl -L -o dist/wsl_update_x64.msi https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi
-
-      - name: Download dns-forwarder (go-dnsmasq)
-        run: |
-          mkdir dist/bin/
-          curl -L -o dist/bin/dns-forwarder https://github.com/janeczku/go-dnsmasq/releases/download/1.0.7/go-dnsmasq-min_linux-amd64
-
+      
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -126,6 +199,8 @@ jobs:
   build-windows:
     runs-on: windows-latest
     needs: build-linux
+    env:
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
     steps:
       - uses: actions/checkout@v4
         with:
@@ -151,7 +226,21 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0"
-          include-prerelease: false
+          dotnet-quality: 'ga'
+          # This requires a lock file.
+          # We explicitly manage a global nuget package cache instead as 
+          # packages should be immutable anyway.
+          cache: false
+      
+      - name: Cache NuGet Packages
+        id: nuget-packages
+        uses: actions/cache@v4
+        env:
+          cache-name: nuget-package-cache
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: ${{ runner.os }}-${{ env.cache-name }}
+          enableCrossOsArchive: true
           
       - name: Publish ContainerDesktop
         shell: bash
@@ -167,11 +256,13 @@ jobs:
         run: dotnet publish -c Release container-desktop/Installer/Installer.csproj -o dist-installer
       
       - name: Zip ContainerDesktop Installer
+        if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         working-directory: dist-installer
         run: 7z a -bd -mx9 -tzip ContainerDesktopInstaller.zip ContainerDesktopInstaller.exe 
 
       - name: Upload artifacts
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
           name: dist-installer
