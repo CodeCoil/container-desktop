@@ -167,11 +167,13 @@ jobs:
         run: dotnet publish -c Release container-desktop/Installer/Installer.csproj -o dist-installer
       
       - name: Zip ContainerDesktop Installer
+        if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         working-directory: dist-installer
         run: 7z a -bd -mx9 -tzip ContainerDesktopInstaller.zip ContainerDesktopInstaller.exe 
 
       - name: Upload artifacts
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
           name: dist-installer
