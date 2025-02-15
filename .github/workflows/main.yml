@@ -51,31 +51,31 @@ jobs:
       ################################################# DOWNLOADS ###################################################
 
       - name: Download docker cli
-        uses: ethanjli/cached-download-action@v0.1.0
+        uses: ethanjli/cached-download-action@v0.1.2
         with:
           url: https://download.docker.com/win/static/stable/x86_64/docker-${{ env.DOCKER_VERSION }}.zip
           destination: docker-${{ env.DOCKER_VERSION }}.zip
 
       - name: Download docker compose (windows)
-        uses: ethanjli/cached-download-action@v0.1.0
+        uses: ethanjli/cached-download-action@v0.1.2
         with:
           url: https://github.com/docker/compose/releases/download/${{ env.DOCKER_COMPOSE_VERSION }}/docker-compose-Windows-x86_64.exe
           destination:  dist/docker/docker-compose.exe
 
       - name: Download docker compose (linux)
-        uses: ethanjli/cached-download-action@v0.1.0
+        uses: ethanjli/cached-download-action@v0.1.2
         with:
           url: https://github.com/docker/compose/releases/download/${{ env.DOCKER_COMPOSE_VERSION }}/docker-compose-linux-x86_64
           destination: dist/docker/docker-compose
 
       - name: Download buildx (windows)
-        uses: ethanjli/cached-download-action@v0.1.0
+        uses: ethanjli/cached-download-action@v0.1.2
         with:
           url: https://github.com/docker/buildx/releases/download/${{ env.DOCKER_BUILDX_VERSION }}/buildx-${{ env.DOCKER_BUILDX_VERSION }}.windows-amd64.exe
           destination: dist/docker/cli-plugins/docker-buildx.exe
 
       - name: Download dns-forwarder (go-dnsmasq)
-        uses: ethanjli/cached-download-action@v0.1.0
+        uses: ethanjli/cached-download-action@v0.1.2
         with:
           url: https://github.com/janeczku/go-dnsmasq/releases/download/${{ env.GO_DNSMASQ }}/go-dnsmasq-min_linux-amd64
           destination: dist/bin/dns-forwarder
