@@ -26,6 +26,17 @@ env:
   GO_VERSION: "1.22"
   GO_DNSMASQ: "1.0.7"
   REGISTRY: ghcr.io
+  # Need to be resolved dynamically as there is no lowercase function
+  # for templated expressions!
+  # See also: https://github.com/orgs/community/discussions/25768
+  # org
+  GITHUB_REPOSITORY_OWNER_LC:   
+  # org/repo
+  GITHUB_REPOSITORY_LC:   
+  # registry/org
+  REGISTRY_BASE_IMAGE_PATH:
+  # registry/org/repo
+  DEFAULT_FULL_IMAGE_NAME:
   # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
@@ -37,6 +48,21 @@ jobs:
       packages: write
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - name: lowercase github.repository
+        run: |
+          github_repo_owner_lc="${GITHUB_REPOSITORY_OWNER@L}"
+          github_repo_lc="${GITHUB_REPOSITORY@L}"
+          github_cr_base_name="$REGISTRY/$github_repo_owner_lc"
+
+          # org
+          echo "GITHUB_REPOSITORY_OWNER_LC=$github_repo_owner_lc" >> ${GITHUB_ENV}
+          # org/repo
+          echo "GITHUB_REPOSITORY_LC=$github_repo_lc" >> ${GITHUB_ENV}
+          # registry/org
+          echo "REGISTRY_BASE_IMAGE_PATH=$github_cr_base_name" >> ${GITHUB_ENV}
+          # registry/org/repo
+          echo "DEFAULT_FULL_IMAGE_NAME=$REGISTRY/$github_repo_lowercase" >> ${GITHUB_ENV}
+
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
         with:
@@ -102,6 +128,8 @@ jobs:
 
       - name: Build tools image
         uses: docker/build-push-action@v6
+        env:
+          IMAGE_NAME: container-desktop-tools
         with:
           context: 'tools/container-desktop-tools/'
           build-args: |
@@ -109,8 +137,8 @@ jobs:
           load: true
           push: false
           tags: container-desktop-tools:build
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository }}:tools-buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository }}:tools-buildcache,mode=max,compression=zstd,compression-level=9
+          cache-from: type=registry,ref=${{ env.DEFAULT_FULL_IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.DEFAULT_FULL_IMAGE_NAME }}:buildcache,mode=max,compression=zstd,compression-level=9
       
       # - name: Build tools image
       #   run: docker build -t container-desktop-tools:build --build-arg "DOCKER_VERSION=$DOCKER_VERSION" tools/container-desktop-tools/
