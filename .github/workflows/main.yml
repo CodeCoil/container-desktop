@@ -126,6 +126,8 @@ jobs:
   build-windows:
     runs-on: windows-latest
     needs: build-linux
+    env:
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
     steps:
       - uses: actions/checkout@v4
         with:
@@ -151,7 +153,21 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0"
-          include-prerelease: false
+          dotnet-quality: 'ga'
+          # This requires a lock file.
+          # We explicitly manage a global nuget package cache instead as 
+          # packages should be immutable anyway.
+          cache: false
+      
+      - name: Cache NuGet Packages
+        id: nuget-packages
+        uses: actions/cache@v4
+        env:
+          cache-name: nuget-package-cache
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: ${{ runner.os }}-${{ env.cache-name }}
+          enableCrossOsArchive: true
           
       - name: Publish ContainerDesktop
         shell: bash
