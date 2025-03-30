@@ -1,7 +1,16 @@
 #!/bin/sh
 distro="${1:-$WSL_DISTRO_NAME}"
-mkdir -p /mnt/wsl/$distro
-mount --bind / /mnt/wsl/$distro
+
+# If mount point directory does not exist, create it.
+if [ ! -d "/mnt/wsl/$distro" ]; then
+    mkdir -p "/mnt/wsl/$distro"
+fi
+
+# If mount point directory is not mounted upon, bind mount fs.
+if ! mountpoint -q -- "/mnt/wsl/$distro"; then
+    mount --bind / "/mnt/wsl/$distro"
+fi
+
 mkdir -p /usr/libexec/docker
 if [ -d /usr/libexec/docker/cli-plugins ]; then
   rm -rf /usr/libexec/docker/cli-plugins

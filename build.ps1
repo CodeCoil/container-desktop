@@ -25,6 +25,11 @@ else {
     New-Item dist -ItemType Directory
 }
 
+# Uncomment this section to run only rewriter tests
+# docker run --rm -v "go-packages-cache:/go/pkg/mod" -v "$($PWD):/go/src" -w /go/src/internal/rewrite -e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 golang:$GO_VERSION go test -v
+# ExitOnFailure("Failed to run rewriter unit tests")
+# exit 0
+
 dotnet clean .\container-desktop\container-desktop.sln
 
 # Build tools image
@@ -55,12 +60,12 @@ ExitOnFailure("Failed to download dns-forwarder")
 docker run --rm -v "$($PWD):/src" container-desktop-tools:build sh -c "curl -L -o /src/dist/bin/dns-forwarder https://github.com/janeczku/go-dnsmasq/releases/download/1.0.7/go-dnsmasq-min_linux-amd64"
 ExitOnFailure("Failed to download dns-forwarder")
 # Build proxy for Windows and Linux and copy to /dist
-docker run --rm -v "$($PWD):/go/src" -w /go/src/cmd/container-desktop-proxy -e CGO_ENABLED=0 -e GOOS=windows -e GOARCH=amd64 golang:$GO_VERSION go build -v -o /go/src/dist/container-desktop-proxy-windows-amd64.exe
+docker run --rm -v "go-packages-cache:/go/pkg/mod" -v "$($PWD):/go/src" -w /go/src/cmd/container-desktop-proxy -e CGO_ENABLED=0 -e GOOS=windows -e GOARCH=amd64 golang:$GO_VERSION go build -v -o /go/src/dist/container-desktop-proxy-windows-amd64.exe
 ExitOnFailure("Failed to build container-desktop-proxy for Windows")
-docker run --rm -v "$($PWD):/go/src" -w /go/src/cmd/container-desktop-proxy -e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 golang:$GO_VERSION go build -v -o /go/src/dist/container-desktop-proxy-linux-amd64
+docker run --rm -v "go-packages-cache:/go/pkg/mod" -v "$($PWD):/go/src" -w /go/src/cmd/container-desktop-proxy -e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 golang:$GO_VERSION go build -v -o /go/src/dist/container-desktop-proxy-linux-amd64
 ExitOnFailure("Failed to build container-desktop-proxy for Linux")
 # build port-forwarder for Windows and copy to /dist
-docker run --rm -v "$($PWD):/go/src" -w /go/src/cmd/container-desktop-port-forwarder -e CGO_ENABLED=0 -e GOOS=windows -e GOARCH=amd64 golang:$GO_VERSION go build -v -o /go/src/dist/container-desktop-port-forwarder.exe
+docker run --rm -v "go-packages-cache:/go/pkg/mod" -v "$($PWD):/go/src" -w /go/src/cmd/container-desktop-port-forwarder -e CGO_ENABLED=0 -e GOOS=windows -e GOARCH=amd64 golang:$GO_VERSION go build -v -o /go/src/dist/container-desktop-port-forwarder.exe
 ExitOnFailure("Failed to build container-desktop-port-forwarder for Windows")
 # Build distro image
 docker build -t container-desktop:build --build-arg DOCKER_VERSION="$DOCKER_VERSION" .
@@ -70,6 +75,7 @@ docker create --name cdbuild container-desktop:build
 docker run --rm -v "$($PWD):/src" --privileged -v //var/run/docker.sock:/var/run/docker.sock container-desktop-tools:build sh -c "docker export cdbuild | gzip > /src/dist/container-desktop-distro.tar.gz"
 ExitOnFailure("Failed to build container-desktop WSL distro")
 docker rm cdbuild
+
 # Build data distro image
 docker build -t container-desktop-data:build .\deployment\container-desktop-data
 ExitOnFailure("Failed to build container-desktop-data image")
