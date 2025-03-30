@@ -140,11 +140,27 @@ public sealed class DnsConfigurator : IDisposable
         }
     }
 
-    private static string[] GetWslDnsAddresses()
+    private string[] GetWslDnsAddresses()
     {
         //TODO: make it more robust
-        var wslNetworkInterface = NetworkInterface.GetAllNetworkInterfaces().FirstOrDefault(x => x.Name == "vEthernet (WSL)");
-        return wslNetworkInterface.GetIPProperties().UnicastAddresses.Where(x => x.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork).Select(x => x.Address.ToString()).ToArray();
+        var wslNetworkInterface = NetworkInterface
+            .GetAllNetworkInterfaces()
+            // 2025/01/16: 
+            // Looking for `Name == "vEthernet (WSL)"` does not work 
+            // on app store based WSL installations as the adapter is 
+			// named "vEthernet (WSL (Hyper-V firewall))"
+            // 
+            .FirstOrDefault(x => x.Name.StartsWith("vEthernet (WSL"));
+        if(wslNetworkInterface is null) 
+        {
+            _logger.LogError("Wsl network interface not found. Expected to find at least one network interface whose name starts with 'vEthernet (WSL'.");
+        }
+        return wslNetworkInterface
+            ?.GetIPProperties()
+            ?.UnicastAddresses
+            ?.Where(x => x.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+            ?.Select(x => x.Address.ToString())
+            ?.ToArray() ?? [];
     }
 
     private string[] GetStaticDnsAddresses()
