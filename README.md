@@ -1,5 +1,5 @@
 
-[![](https://img.shields.io/github/v/release/container-desktop/container-desktop?label=%20&style=for-the-badge&logo=github)](https://github.com/container-desktop/container-desktop/releases/latest)
+[![](https://img.shields.io/github/v/release/CodeCoil/container-desktop?label=%20&style=for-the-badge&logo=github)](https://github.com/CodeCoil/container-desktop/releases/latest)
 
 # Container Desktop
 
