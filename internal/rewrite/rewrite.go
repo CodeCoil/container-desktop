@@ -265,8 +265,8 @@ func mapPath(binding string, context *rewriteContext) string {
 	if context.rewriteType == Response {
 		rtype = "RSP"
 	}
-    path := context.path
-    logger := context.logger
+	path := context.path
+	logger := context.logger
 	lctx := fmt.Sprintf("[mapPath2(type: %8s, win: %v, binding: %40s, base: %10s)]", rtype, context.isWindows, binding, path)
 	
 	s := strings.Replace(binding, "\\", "/", -1)
@@ -306,8 +306,8 @@ func mapPathV2(binding string, context *rewriteContext) string {
 	if context.rewriteType == Response {
 		rtype = "RSP"
 	}
-    path := context.path
-    logger := context.logger
+	path := context.path
+	logger := context.logger
 	lctx := fmt.Sprintf("[mapPath2(type: %8s, win: %v, binding: %40s, base: %10s)]", rtype, context.isWindows, binding, path)
 
 	// Before we normalize the slash in the path,
@@ -320,44 +320,44 @@ func mapPathV2(binding string, context *rewriteContext) string {
 		return binding
 	}
 
-    s := strings.Replace(binding, "\\", "/", -1)
-    parts := strings.Split(s, ":")
-    clientPath := parts[0]
+	s := strings.Replace(binding, "\\", "/", -1)
+	parts := strings.Split(s, ":")
+	clientPath := parts[0]
 
 	getUnixPath := func(base string, pathSegments ...string) string {
 		x := append([]string{base}, pathSegments...)
 		return strings.Join(x, "/")
-    }
+	}
 	getMountPath := func(pathSegments ...string) string {
 		return getUnixPath("/mnt", pathSegments...)
-    }
+	}
 	getHostMountPath := func(pathSegments ...string) string {
 		return getUnixPath("/mnt/host", pathSegments...)
-    }
+	}
 	getWslPath := func(pathSegments ...string) string {
 		return getUnixPath("/mnt/wsl", pathSegments...)
-    }
+	}
 	translateToWindowsPath := func(linuxPath string) string {
 		return strings.Replace(linuxPath, "/", "\\", -1)
 	}
 
-    if strings.HasPrefix(clientPath, "/mnt/") {
-        // Handle paths starting with /mnt/
-        mntPath := clientPath[5:]
-        allPathSegments := strings.Split(mntPath, "/")
-        mntType := allPathSegments[0]
-        pathSegments := allPathSegments[1:]
+	if strings.HasPrefix(clientPath, "/mnt/") {
+		// Handle paths starting with /mnt/
+		mntPath := clientPath[5:]
+		allPathSegments := strings.Split(mntPath, "/")
+		mntType := allPathSegments[0]
+		pathSegments := allPathSegments[1:]
 
-        switch mntType {
-        case "host":
+		switch mntType {
+		case "host":
 			if len(pathSegments) == 0 {
 				logger.Errorf("%s Invalid binding. Expected at least one path segment.", lctx)
 				parts[0] = ""
 				break;
 			}
-            // Handle host paths
+			// Handle host paths
 			
-            if context.isWindows {
+			if context.isWindows {
 				// Host proxy on Windows
 				drive := pathSegments[0]
 				drivePath := strings.Join(pathSegments[1:], "/")
@@ -365,37 +365,37 @@ func mapPathV2(binding string, context *rewriteContext) string {
 				winpath := drive + ":/" + drivePath
 				// parts[0] => {drive}:\some\path
 				parts[0] = translateToWindowsPath(winpath)
-            } else {
+			} else {
 				// either a socket or a unix path
 				// Distro proxy on WSL
 				parts[0] = getMountPath(pathSegments...)
-            }
-        case "wsl":
-            // Handle WSL paths
-            distro := pathSegments[0]
-            if context.isWindows && context.rewriteType == Response {
-                // Host proxy on Windows
+			}
+		case "wsl":
+			// Handle WSL paths
+			distro := pathSegments[0]
+			if context.isWindows && context.rewriteType == Response {
+				// Host proxy on Windows
 				res := getUnixPath("//wsl.localhost", pathSegments...)
-                parts[0] = translateToWindowsPath(res)
-            } else {
-                // Distro proxy on WSL
-                if context.rewriteType == Response && path == getWslPath(distro) {
+				parts[0] = translateToWindowsPath(res)
+			} else {
+				// Distro proxy on WSL
+				if context.rewriteType == Response && path == getWslPath(distro) {
 					// When a request is coming from the local WSL distro
 					// parts[0] => /some/path
 					parts[0] = getUnixPath("", pathSegments[1:]...)
-                } else {
+				} else {
 					parts[0] = getWslPath(pathSegments...)
-                }
-            }
-        default:
-            if context.rewriteType == Request {
+				}
+			}
+		default:
+			if context.rewriteType == Request {
 				parts[0] = getHostMountPath(allPathSegments...)
-            } else {
-                logger.Warnf("%s Don't know how to map mount type %s (type: %s) for response ", lctx, parts[0], mntType)
-            }
-        }
-        s = strings.Join(parts, ":")
-    } else if context.isWindows {
+			} else {
+				logger.Warnf("%s Don't know how to map mount type %s (type: %s) for response ", lctx, parts[0], mntType)
+			}
+		}
+		s = strings.Join(parts, ":")
+	} else if context.isWindows {
 		// Handle Windows paths
 
 		// strip windows UNC prefix (case insensitive)
@@ -405,13 +405,13 @@ func mapPathV2(binding string, context *rewriteContext) string {
 		} else if strings.HasPrefix(clientPath, "//wsl$/") {
 			wslPath = clientPath[7:]
 		}
-        // Check if we found either prefixes by comparing
+		// Check if we found either prefixes by comparing
 		// with the length of the original value
-        if len(wslPath) != len(clientPath)  {
-            // Map as /wsl/{distro}/{wslPath}
-            parts[0] = getWslPath(wslPath)
-            s = strings.Join(parts, ":")
-        } else if len(clientPath) == 1 {
+		if len(wslPath) != len(clientPath)  {
+			// Map as /wsl/{distro}/{wslPath}
+			parts[0] = getWslPath(wslPath)
+			s = strings.Join(parts, ":")
+		} else if len(clientPath) == 1 {
 			// Handle REQUESTS that contains host paths on 
 			// the windows proxy.
 
@@ -433,17 +433,17 @@ func mapPathV2(binding string, context *rewriteContext) string {
 			parts[0] = translateToWindowsPath(clientPath)
 			s = strings.Join(parts, ":")
 		}
-    } else if strings.HasPrefix(s, "/") {
-        // Handle Linux paths
+	} else if strings.HasPrefix(s, "/") {
+		// Handle Linux paths
 		// This could result in either a mapping 
 		// to the mount of the WSL distro OR
 		// the mount of the host path
-        s = path + s
-    }
+		s = path + s
+	}
 
-    // Log the mapping result
-    logger.Warnf("%s ==> %-40s", lctx, s)
+	// Log the mapping result
+	logger.Warnf("%s ==> %-40s", lctx, s)
 
-    return s
+	return s
 }
 
