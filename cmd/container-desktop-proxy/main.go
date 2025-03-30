@@ -76,7 +76,7 @@ var rootCmd = &cobra.Command{
 		proxy.Director = func(r *http.Request) {
 			orgDirector(r)
 			logger.Debugf("Requesting url: %s: %s", r.Method, r.URL)
-			body, err := rewrite.RewriteBody(r.Body, r.URL.Path, flags.wslDistroName, logger)
+			body, err := rewrite.RewriteBody(r.Body, r.URL.Path, flags.wslDistroName, logger, rewrite.Request)
 			if len(body) > 0 && err == nil {
 				logger.Debug("Request body was rewritten")
 				r.Body = io.NopCloser(bytes.NewReader(body))
@@ -85,7 +85,7 @@ var rootCmd = &cobra.Command{
 		}
 		proxy.ModifyResponse = func(r *http.Response) error {
 			logger.Debugf("Original response content-length: %d", r.ContentLength)
-			body, err := rewrite.RewriteBody(r.Body, r.Request.URL.Path, flags.wslDistroName, logger)
+			body, err := rewrite.RewriteBody(r.Body, r.Request.URL.Path, flags.wslDistroName, logger, rewrite.Response)
 			if err != nil {
 				return err
 			}
