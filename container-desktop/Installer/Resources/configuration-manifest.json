@@ -66,14 +66,6 @@
       "onUpdateAction": "Install"
     },
     {
-      "type": "CopyPackedFile",
-      "id": "CopWslKernel",
-      "description": "Copy WSL Kernel MSI",
-      "resourceUri": "pack://application:,,,/ContainerDesktopInstaller;component/Resources/wsl_update_x64.msi",
-      "targetDirectory": "%INSTALLDIR%\\Resources",
-      "onUpdateAction": "Install"
-    },
-    {
       "type": "CopyFile",
       "id": "CopyInstaller",
       "description": "Copy installer",
@@ -110,30 +102,51 @@
       "description": "Creating Application data directory",
       "directory": "%LOCALAPPDATA%\\%PRODUCT_NAME%"
     },
+    // ATTEMPT to use the "new" way (Windows 10 version 2004 Build >= 19041 or Windows 11)
+    // Source: https://learn.microsoft.com/en-us/windows/wsl/install#install-wsl-command
+    //
+    // Unfortunately we need to make this optional as it's not trivial to handle all possible 
+    // use cases correctly.
+    //
+    // The following will only work if the user either
+    // - Did not install WSL yet 
+    // - Already installed WSL from the app store 
+    // - Already installed WSL using `wsl.exe --install ...`
+    //
+    // It will fail if the user already installed WSL using the "inbox" way (enabled through
+    // windows features).
+    // In this case the wsl.exe CLI will not have the --no-distribution and --web-download parameters.
     {
-      "type": "EnableWindowsFeatures",
-      "id": "EnableWsl",
-      "description": "Enable Windows feature Windows Subsystem for Linux",
-      "features": [ "Microsoft-Windows-Subsystem-Linux" ],
+      "type": "RunExecutable",
+      "id": "InstallWSL",
+      "description": "Install the latest stable WSL version for the current user (Requires Windows 10 v2004 Build >= 19041 or Windows 11)",
+      "exePath": "cmd.exe",
+      "arguments": [ "/c", "--install", "--no-distribution", "--web-download" ],
+      "wait": true,
       "noUninstall": true,
-      "ignoreRebootRequired": true
+      "runAsDesktopUser": false,
+      "useShellExecute": false,
+      // Since this whole process is kinda brittle, make it optional (even though it is required)
+      // so that the user can manually install it if required and it's not blocked.
+      "optional": true,
+      "continueOnFail": false,
+      "onUpdateAction": "Install"
     },
     {
-      "type": "EnableWindowsFeatures",
-      "id": "EnableVirtualMachinePlatform",
-      "description": "Enable Windows feature Virtual Machine Platform",
-      "features": [ "VirtualMachinePlatform" ],
-      "noUninstall": true
-    },
-    {
-      "type": "InstallMsi",
-      "id": "InstallLatestWslKernel",
-      "description": "Install latest WSL kernel",
-      "uri": "https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi",
-      "fallbackPath": "%INSTALLDIR%\\Resources\\wsl_update_x64.msi",
-      "uninstallDisplayName": "Windows Subsystem for Linux Update",
+      "type": "RunExecutable",
+      "id": "UpdateWSL",
+      "description": "Update WSL to the latest kernel version for the current user",
+      "exePath": "cmd.exe",
+      "arguments": [ "/c", "wsl.exe", "--update" ],
+      "wait": true,
       "noUninstall": true,
-      "dependsOn": [ "EnableWsl" ]
+      "runAsDesktopUser": false,
+      "useShellExecute": false,
+      "onUpdateAction": "Install",
+      // Since this whole process is kinda brittle, make it optional (even though it is required)
+      // so that the user can manually install it if required and it's not blocked.
+      "optional": true,
+      "continueOnFail": false
     },
     {
       "type": "WslDistro",
@@ -142,7 +155,14 @@
       "name": "container-desktop",
       "path": "%LOCALAPPDATA%\\%PRODUCT_NAME%\\wsl\\distro",
       "rootfsFileName": "%INSTALLDIR%\\Resources\\container-desktop-distro.tar.gz",
-      "dependsOn": [ "InstallLatestWslKernel" ],
+      
+      // ORIGINAL approach
+      // "dependsOn": [ "InstallLatestWslKernel" ],
+
+      // CLI based approach
+      // Cannot depend on optional steps
+      // "dependsOn": [ "UpdateWSL" ],
+
       "extraInformation": "Installing the WSL distribution may take a while if the system was rebooted due to enabling the features required for WSL.",
       "onUpdateAction": "Install"
     },
@@ -154,7 +174,8 @@
       "path": "%LOCALAPPDATA%\\%PRODUCT_NAME%\\wsl\\data-distro",
       "rootfsFileName": "%INSTALLDIR%\\Resources\\container-desktop-data-distro.tar.gz",
       "onUpdateAction": "Skip",
-      "dependsOn": [ "InstallLatestWslKernel" ]
+      // Cannot depend on optional steps
+      // "dependsOn": [ "UpdateWSL" ]
     },
     {
       "type": "AddToPath",
