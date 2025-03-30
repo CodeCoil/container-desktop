@@ -16,9 +16,20 @@ public class ConfigurationService : IConfigurationService
     private ContainerDesktopConfiguration? _loadedConfiguration;
     private readonly CompareLogic _comparer;
     private readonly IApplicationContext _applicationContext;
-
+    private readonly Newtonsoft.Json.JsonSerializerSettings _jsonSerializerSettings;
+        
     public ConfigurationService(IFileSystem fileSystem, IProductInformation productInformation, IApplicationContext appContext, IOptions<ConfigurationOptions> options)
     {
+         _jsonSerializerSettings = new Newtonsoft.Json.JsonSerializerSettings(
+            Newtonsoft.Json.JsonConvert.DefaultSettings?.Invoke() ?? new()
+        );
+        _jsonSerializerSettings.Converters.Add(
+            new Newtonsoft.Json.Converters.StringEnumConverter(
+                new Newtonsoft.Json.Serialization.DefaultNamingStrategy(), 
+                allowIntegerValues: true
+            )
+        );
+
         _comparer = new CompareLogic(new ComparisonConfig {  MaxDifferences = int.MaxValue});
         _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         _productInformation = productInformation ?? throw new ArgumentNullException(nameof(productInformation));
@@ -53,7 +64,7 @@ public class ConfigurationService : IConfigurationService
             var result = _comparer.Compare(_loadedConfiguration, Configuration);
             if (!result.AreEqual)
             {
-                var json = JsonConvert.SerializeObject(Configuration, Formatting.Indented);
+                var json = JsonConvert.SerializeObject(Configuration, Formatting.Indented, _jsonSerializerSettings);
                 _fileSystem.File.WriteAllText(_configurationFilePath, json);
                 if (notify)
                 {
@@ -62,7 +73,7 @@ public class ConfigurationService : IConfigurationService
                     ConfigurationChanged?.Invoke(this, new ConfigurationChangedEventArgs(restartRequested, changedProperties));
                 }
                 _loadedConfiguration = new ContainerDesktopConfiguration(_productInformation);
-                JsonConvert.PopulateObject(json, _loadedConfiguration);
+                JsonConvert.PopulateObject(json, _loadedConfiguration, _jsonSerializerSettings);
             }
         }
     }
@@ -71,11 +82,11 @@ public class ConfigurationService : IConfigurationService
     {
         var json = _fileSystem.File.ReadAllText(_configurationFilePath);
         var loaded = new ContainerDesktopConfiguration(_productInformation);
-        JsonConvert.PopulateObject(json, loaded);
+        JsonConvert.PopulateObject(json, loaded, _jsonSerializerSettings);
         var result = _comparer.Compare(Configuration, loaded);
         if(!result.AreEqual)
         {
-            JsonConvert.PopulateObject(json, Configuration);
+            JsonConvert.PopulateObject(json, Configuration, _jsonSerializerSettings);
             if (notify)
             {
                 var changedProperties = result.Differences.Select(x => x.PropertyName).ToArray();
