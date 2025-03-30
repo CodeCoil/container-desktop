@@ -457,7 +457,7 @@ public sealed class DefaultContainerEngine : IContainerEngine, IDisposable
             .Add("--tls-cert", Path.Combine(LocalCertsPath, "cert.pem"), true)
             .Add("--tls-ca", Path.Combine(LocalCertsPath, "ca.pem"), true)
             .Build();
-        _proxyProcess = _processExecutor.Start(proxyPath, args);
+        _proxyProcess = _processExecutor.Start(proxyPath, args, stdOut: LogStdOut, stdErr: LogStdError);
         // Give it some time to startup
         if (_proxyProcess.WaitForExit(1000))
         {
@@ -568,6 +568,14 @@ public sealed class DefaultContainerEngine : IContainerEngine, IDisposable
         {
             _ = Task.Run(() => UpdateCertificates());
         }
+    }
+    private void LogStdOut(string s)
+    {
+        _logger.LogInformation(s);
+    }
+    private void LogStdError(string s)
+    {
+        _logger.LogInformation(s);
     }
 }
 

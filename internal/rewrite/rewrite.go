@@ -289,7 +289,7 @@ func mapPath(binding string, context *rewriteContext) string {
 	} else if strings.HasPrefix(s, "/") {
 		s = path + s
 	}
-	logger.Warnf("%s ==> %-40s", lctx, s)
+	logger.Infof("%s ==> %-40s", lctx, s)
 	return s
 }
 
@@ -316,7 +316,7 @@ func mapPathV2(binding string, context *rewriteContext) string {
 	// (e.g. //var/run/docker.sock)
 	if strings.HasPrefix(binding, "//") {
 		// Log the mapping result
-		logger.Warnf("%s ==> %-40s", lctx, binding)
+		logger.Infof("%s ==> %-40s", lctx, binding)
 		return binding
 	}
 
@@ -391,7 +391,7 @@ func mapPathV2(binding string, context *rewriteContext) string {
 			if context.rewriteType == Request {
 				parts[0] = getHostMountPath(allPathSegments...)
 			} else {
-				logger.Warnf("%s Don't know how to map mount type %s (type: %s) for response ", lctx, parts[0], mntType)
+				logger.Infof("%s Don't know how to map mount type %s (type: %s) for response ", lctx, parts[0], mntType)
 			}
 		}
 		s = strings.Join(parts, ":")
@@ -442,7 +442,7 @@ func mapPathV2(binding string, context *rewriteContext) string {
 	}
 
 	// Log the mapping result
-	logger.Warnf("%s ==> %-40s", lctx, s)
+	logger.Infof("%s ==> %-40s", lctx, s)
 
 	return s
 }
