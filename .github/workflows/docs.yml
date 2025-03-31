@@ -36,4 +36,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         #mike deploy --branch gh-pages --push test
         run: |
-          mike deploy --update-aliases --push --rebase ${{ steps.git.outputs.tag }} latest
+          mike deploy --update-aliases --push ${{ steps.git.outputs.tag }} latest
