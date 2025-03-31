@@ -8,11 +8,16 @@ on:
   push:
     paths-ignore:
       - "/docs/**"
+      - "/.github/workflows/docs.yml"
     tags:
       - v*
   pull_request:
     paths-ignore:
       - "/docs/**"
+      - "/.github/workflows/docs.yml"
+      - "/docs/**"
+      - "*.md"
+      - "mkdocs.*"
     branches: 
       - main
 
