@@ -2,9 +2,10 @@
 # - dotnet 6.0 SDK
 # - docker
 # This script must run on Windows because the application is a Windows application.
-$DOCKER_VERSION="26.1.4"
-$DOCKER_COMPOSE_VERSION="v2.27.1"
-$DOCKER_BUILDX_VERSION="v0.15.0"
+$DOCKER_VERSION="28.2.2"
+$DOCKER_COMPOSE_VERSION="v2.36.2"
+$DOCKER_BUILDX_VERSION="v0.24.0"
+$GO_DNSMASQ="1.0.7"
 $GO_VERSION="1.22"
 function ExitOnFailure([string] $message, [string] $sha) {
     if (($LastExitCode -ne 0) -or (-not $?)) {
@@ -57,7 +58,7 @@ ExitOnFailure("Failed to download WSL Kernel MSI")
 # Download dns-forwarder (go-dnsmasq)
 docker run --rm -v "$($PWD):/src" container-desktop-tools:build sh -c "mkdir -p /src/dist/bin/"
 ExitOnFailure("Failed to download dns-forwarder")
-docker run --rm -v "$($PWD):/src" container-desktop-tools:build sh -c "curl -L -o /src/dist/bin/dns-forwarder https://github.com/janeczku/go-dnsmasq/releases/download/1.0.7/go-dnsmasq-min_linux-amd64"
+docker run --rm -v "$($PWD):/src" container-desktop-tools:build sh -c "curl -L -o /src/dist/bin/dns-forwarder https://github.com/janeczku/go-dnsmasq/releases/download/$GO_DNSMASQ/go-dnsmasq-min_linux-amd64"
 ExitOnFailure("Failed to download dns-forwarder")
 # Build proxy for Windows and Linux and copy to /dist
 docker run --rm -v "go-packages-cache:/go/pkg/mod" -v "$($PWD):/go/src" -w /go/src/cmd/container-desktop-proxy -e CGO_ENABLED=0 -e GOOS=windows -e GOARCH=amd64 golang:$GO_VERSION go build -v -o /go/src/dist/container-desktop-proxy-windows-amd64.exe

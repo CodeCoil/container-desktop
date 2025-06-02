@@ -25,9 +25,9 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKER_VERSION: "26.1.4"
-  DOCKER_COMPOSE_VERSION: "v2.27.1"
-  DOCKER_BUILDX_VERSION: "v0.15.0"
+  DOCKER_VERSION: "28.2.2"
+  DOCKER_COMPOSE_VERSION: "v2.36.2"
+  DOCKER_BUILDX_VERSION: "v0.24.0"
   GO_VERSION: "1.22"
   GO_DNSMASQ: "1.0.7"
   REGISTRY: ghcr.io
@@ -35,13 +35,13 @@ env:
   # for templated expressions!
   # See also: https://github.com/orgs/community/discussions/25768
   # org
-  GITHUB_REPOSITORY_OWNER_LC:   
+  GITHUB_REPOSITORY_OWNER_LC: ''  
   # org/repo
-  GITHUB_REPOSITORY_LC:   
+  GITHUB_REPOSITORY_LC: ''
   # registry/org
-  REGISTRY_BASE_IMAGE_PATH:
+  REGISTRY_BASE_IMAGE_PATH: ''
   # registry/org/repo
-  DEFAULT_FULL_IMAGE_NAME:
+  DEFAULT_FULL_IMAGE_NAME: ''
   # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
